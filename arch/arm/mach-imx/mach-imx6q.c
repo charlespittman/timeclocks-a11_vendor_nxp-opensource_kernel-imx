@@ -15,6 +15,7 @@
 #include <linux/irqchip.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
+#include <linux/of_gpio.h>
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
 #include <linux/pm_opp.h>
@@ -32,6 +33,37 @@
 #include "common.h"
 #include "cpuidle.h"
 #include "hardware.h"
+
+/* The PCIe switch on the Apalis Evaluation Board requires to have its reset
+ * deasserted some time before the reset of the downstream endpoints.
+ * The downstream endpoints use RESET_MOCI while the PCIe switch uses GPIO7
+ * for reset.
+ * Handle RESET_MOCI when the PCIe driver is not configured or disabled in
+ * the device tree */
+static void apalis_reset_moci(void)
+{
+	struct device_node *np;
+	int ret, reset_moci_gpio, no_pcie;
+#ifdef CONFIG_PCI_IMX6
+	no_pcie = 0;
+#else
+	no_pcie = 1;
+#endif
+
+	np = of_find_node_by_name(NULL, "pcie");
+	if (!of_device_is_available(np) || no_pcie) {
+		reset_moci_gpio = of_get_named_gpio(np, "reset-ep-gpio", 0);
+		if (gpio_is_valid(reset_moci_gpio)) {
+			ret = gpio_request_one(reset_moci_gpio,
+					GPIOF_OUT_INIT_LOW,
+					"RESET_MOCI");
+			if (ret) {
+				pr_err("%s(): unable to get RESET_MOCI gpio"
+					" from dt pcie node\n", __func__);
+			}
+		}
+	}
+}
 
 /* For imx6q sabrelite board: set KSZ9021RN RGMII pad skew */
 static int ksz9021rn_phy_fixup(struct phy_device *phydev)
@@ -61,6 +93,14 @@ static void mmd_write_reg(struct phy_device *dev, int device, int reg, int val)
 	phy_write(dev, 0x0e, val);
 }
 
+static int mmd_read_reg(struct phy_device *dev, int device, int reg)
+{
+	phy_write(dev, 0x0d, device);
+	phy_write(dev, 0x0e, reg);
+	phy_write(dev, 0x0d, (1 << 14) | device);
+	return phy_read(dev, 0x0e);
+}
+
 static int ksz9031rn_phy_fixup(struct phy_device *dev)
 {
 	/*
@@ -70,6 +110,33 @@ static int ksz9031rn_phy_fixup(struct phy_device *dev)
 	mmd_write_reg(dev, 2, 4, 0);
 	mmd_write_reg(dev, 2, 5, 0);
 	mmd_write_reg(dev, 2, 8, 0x003ff);
+
+	return 0;
+}
+
+#define KSZ9131_RXTXDLL_BYPASS	12
+
+static int ksz9131rn_phy_fixup(struct phy_device *dev)
+{
+	int tmp;
+
+	tmp = mmd_read_reg(dev, 2, 0x4c);
+	/* disable rxdll bypass (enable 2ns skew delay on RXC) */
+	tmp &= ~(1 << KSZ9131_RXTXDLL_BYPASS);
+	mmd_write_reg(dev, 2, 0x4c, tmp);
+
+	tmp = mmd_read_reg(dev, 2, 0x4d);
+	/* disable txdll bypass (enable 2ns skew delay on TXC) */
+	tmp &= ~(1 << KSZ9131_RXTXDLL_BYPASS);
+	mmd_write_reg(dev, 2, 0x4d, tmp);
+
+	/*
+	 * Subtract ~0.6ns from txdll = ~1.4ns delay.
+	 * leave RXC path untouched
+	 */
+	mmd_write_reg(dev, 2, 4, 0x007d);
+	mmd_write_reg(dev, 2, 6, 0xdddd);
+	mmd_write_reg(dev, 2, 8, 0x0007);
 
 	return 0;
 }
@@ -179,6 +246,8 @@ static void __init imx6q_enet_phy_init(void)
 				ksz9021rn_phy_fixup);
 		phy_register_fixup_for_uid(PHY_ID_KSZ9031, MICREL_PHY_ID_MASK,
 				ksz9031rn_phy_fixup);
+		phy_register_fixup_for_uid(PHY_ID_KSZ9131, MICREL_PHY_ID_MASK,
+				ksz9131rn_phy_fixup);
 		phy_register_fixup_for_uid(PHY_ID_AR8031, 0xffffffef,
 				ar8031_phy_fixup);
 		phy_register_fixup_for_uid(PHY_ID_AR8035, 0xffffffef,
@@ -341,6 +410,9 @@ static void __init imx6q_init_machine(void)
 	imx6q_csi_mux_init();
 	cpu_is_imx6q() ?  imx6q_pm_init() : imx6dl_pm_init();
 	imx6q_axi_init();
+
+	if (of_machine_is_compatible("toradex,apalis_imx6q"))
+		apalis_reset_moci();
 }
 
 static void __init imx6q_init_late(void)

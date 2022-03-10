@@ -454,7 +454,7 @@ static void __init imx7d_clocks_init(struct device_node *ccm_node)
 	hws[IMX7D_PLL_DRAM_MAIN_533M] = imx_clk_hw_fixed_factor("pll_dram_533m", "pll_dram_main_clk", 1, 2);
 
 	hws[IMX7D_PLL_SYS_MAIN_480M_CLK] = imx_clk_hw_gate_dis_flags("pll_sys_main_480m_clk", "pll_sys_main_480m", base + 0xb0, 4, CLK_IS_CRITICAL);
-	hws[IMX7D_PLL_SYS_MAIN_240M_CLK] = imx_clk_hw_gate_dis("pll_sys_main_240m_clk", "pll_sys_main_240m", base + 0xb0, 5);
+	hws[IMX7D_PLL_SYS_MAIN_240M_CLK] = imx_clk_hw_gate_dis_flags("pll_sys_main_240m_clk", "pll_sys_main_240m", base + 0xb0, 5, CLK_IS_CRITICAL);
 	hws[IMX7D_PLL_SYS_MAIN_120M_CLK] = imx_clk_hw_gate_dis("pll_sys_main_120m_clk", "pll_sys_main_120m", base + 0xb0, 6);
 	hws[IMX7D_PLL_DRAM_MAIN_533M_CLK] = imx_clk_hw_gate("pll_dram_533m_clk", "pll_dram_533m", base + 0x70, 12);
 
@@ -704,7 +704,7 @@ static void __init imx7d_clocks_init(struct device_node *ccm_node)
 	hws[IMX7D_MAIN_AXI_ROOT_DIV] = imx_clk_hw_divider2("axi_post_div", "axi_pre_div", base + 0x8800, 0, 6);
 	hws[IMX7D_DISP_AXI_ROOT_DIV] = imx_clk_hw_divider2("disp_axi_post_div", "disp_axi_pre_div", base + 0x8880, 0, 6);
 	hws[IMX7D_ENET_AXI_ROOT_DIV] = imx_clk_hw_divider2("enet_axi_post_div", "enet_axi_pre_div", base + 0x8900, 0, 6);
-	hws[IMX7D_NAND_USDHC_BUS_ROOT_CLK] = imx_clk_hw_divider2("nand_usdhc_root_clk", "nand_usdhc_pre_div", base + 0x8980, 0, 6);
+	hws[IMX7D_NAND_USDHC_BUS_ROOT_CLK] = imx_clk_hw_divider2_flags("nand_usdhc_root_clk", "nand_usdhc_pre_div", base + 0x8980, 0, 6, CLK_IS_CRITICAL | CLK_OPS_PARENT_ENABLE | CLK_SET_RATE_PARENT);
 	hws[IMX7D_AHB_CHANNEL_ROOT_DIV] = imx_clk_hw_divider2("ahb_root_clk", "ahb_pre_div", base + 0x9000, 0, 6);
 	hws[IMX7D_IPG_ROOT_CLK] = imx_clk_hw_divider_flags("ipg_root_clk", "ahb_root_clk", base + 0x9080, 0, 2, CLK_IS_CRITICAL | CLK_OPS_PARENT_ENABLE | CLK_SET_RATE_PARENT);
 	hws[IMX7D_DRAM_ROOT_DIV] = imx_clk_hw_divider2("dram_post_div", "dram_cg", base + 0x9880, 0, 3);
@@ -877,12 +877,6 @@ static void __init imx7d_clocks_init(struct device_node *ccm_node)
 	clk_set_parent(hws[IMX7D_PLL_VIDEO_MAIN_BYPASS]->clk, hws[IMX7D_PLL_VIDEO_MAIN]->clk);
 
 	clk_set_parent(hws[IMX7D_MIPI_CSI_ROOT_SRC]->clk, hws[IMX7D_PLL_SYS_PFD3_CLK]->clk);
-
-	if (imx_src_is_m4_enabled()) {
-		clk_set_parent(hws[IMX7D_ARM_M4_ROOT_SRC]->clk, hws[IMX7D_PLL_SYS_MAIN_240M_CLK]->clk);
-		clk_prepare_enable(hws[IMX7D_ARM_M4_ROOT_CLK]->clk);
-		clk_prepare_enable(hws[IMX7D_UART2_ROOT_CLK]->clk);
-	}
 
 	/* use old gpt clk setting, gpt1 root clk must be twice as gpt counter freq */
 	clk_set_parent(hws[IMX7D_GPT1_ROOT_SRC]->clk, hws[IMX7D_OSC_24M_CLK]->clk);

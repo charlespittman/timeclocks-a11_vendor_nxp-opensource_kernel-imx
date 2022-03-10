@@ -46,6 +46,7 @@ config HAVE_IMX_GPCV2
 
 config HAVE_IMX_MMDC
 	bool
+	select HAVE_IMX_BUSFREQ
 
 config HAVE_IMX_AMP
 	bool
@@ -495,6 +496,7 @@ config SOC_IMX6
 	select ARM_ERRATA_775420
 	select ARM_GIC
 	select HAVE_IMX_ANATOP
+	select HAVE_IMX_BUSFREQ
 	select HAVE_IMX_GPC
 	select HAVE_IMX_MMDC
 	select HAVE_IMX_SRC
@@ -524,6 +526,7 @@ config SOC_IMX6SLL
 	bool "i.MX6 SoloLiteLite support"
 	select PINCTRL_IMX6SLL
 	select SOC_IMX6
+	select ARM_IMX6Q_CPUFREQ
 
 	help
 	  This enables support for Freescale i.MX6 SoloLiteLite processor.
@@ -546,6 +549,7 @@ config SOC_IMX6UL
 	select PINCTRL_IMX6UL
 	select SOC_IMX6
 	select ARM_ERRATA_814220
+	select ARM_IMX6Q_CPUFREQ
 
 	help
 	  This enables support for Freescale i.MX6 UltraLite processor.

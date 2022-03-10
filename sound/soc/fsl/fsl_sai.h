@@ -89,6 +89,7 @@
 /* SAI Transmit/Receive Control Register */
 #define FSL_SAI_CSR_TERE	BIT(31)
 #define FSL_SAI_CSR_SE		BIT(30)
+#define FSL_SAI_CSR_BCE		BIT(28)
 #define FSL_SAI_CSR_FR		BIT(25)
 #define FSL_SAI_CSR_SR		BIT(24)
 #define FSL_SAI_CSR_xF_SHIFT	16
@@ -225,6 +226,8 @@ struct fsl_sai_soc_data {
 	bool imx;
 	/* True for EDMA because it needs period size multiple of maxburst */
 	bool constrain_period_size;
+	/* Set to true if the MCLK to the output pin is gated with bce */
+	bool mclk_gated_by_bce;
 };
 
 struct fsl_sai_verid {
@@ -279,6 +282,8 @@ struct fsl_sai {
 	unsigned int slot_width;
 	unsigned int bitclk_ratio;
 
+	const struct fsl_sai_soc_data *soc_data;
+	struct snd_soc_dai_driver cpu_dai_drv;
 	struct snd_dmaengine_dai_dma_data dma_params_rx;
 	struct snd_dmaengine_dai_dma_data dma_params_tx;
 	const struct fsl_sai_soc_data *soc;
@@ -288,7 +293,6 @@ struct fsl_sai {
 
 	struct fsl_sai_verid verid;
 	struct fsl_sai_param param;
-	struct snd_soc_dai_driver cpu_dai_drv;
 };
 
 const struct attribute_group *fsl_sai_get_dev_attribute_group(bool monitor_spdif);

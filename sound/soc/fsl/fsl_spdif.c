@@ -530,10 +530,10 @@ static int fsl_spdif_startup(struct snd_pcm_substream *substream,
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		scr = SCR_TXFIFO_AUTOSYNC | SCR_TXFIFO_CTRL_NORMAL |
 			SCR_TXSEL_NORMAL | SCR_USRC_SEL_CHIP |
-			SCR_TXFIFO_FSEL_IF8;
+			SCR_TXFIFO_FSEL_IF8 | SCR_VAL_CLEAR;
 		mask = SCR_TXFIFO_AUTOSYNC_MASK | SCR_TXFIFO_CTRL_MASK |
 			SCR_TXSEL_MASK | SCR_USRC_SEL_MASK |
-			SCR_TXFIFO_FSEL_MASK;
+			SCR_TXFIFO_FSEL_MASK | SCR_VAL_MASK;
 	} else {
 		scr = SCR_RXFIFO_FSEL_IF8 | SCR_RXFIFO_AUTOSYNC;
 		mask = SCR_RXFIFO_FSEL_MASK | SCR_RXFIFO_AUTOSYNC_MASK|
@@ -1525,12 +1525,20 @@ static int fsl_spdif_probe(struct platform_device *pdev)
 					      &spdif_priv->cpu_dai_drv, 1);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to register DAI: %d\n", ret);
-		return ret;
+		goto disable_pm_runtime;
 	}
 
 	ret = imx_pcm_dma_init(pdev, IMX_SPDIF_DMABUF_SIZE);
-	if (ret && ret != -EPROBE_DEFER)
-		dev_err(&pdev->dev, "imx_pcm_dma_init failed: %d\n", ret);
+	if (ret) {
+		if (ret != -EPROBE_DEFER)
+			dev_err(&pdev->dev, "imx_pcm_dma_init failed: %d\n", ret);
+		goto disable_pm_runtime;
+	}
+
+	return 0;
+
+disable_pm_runtime:
+	pm_runtime_disable(&pdev->dev);
 
 	return ret;
 }

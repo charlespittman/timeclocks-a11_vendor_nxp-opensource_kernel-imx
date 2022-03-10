@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 /*
- * Copyright 2019 NXP
+ * Copyright 2019-2021 NXP
  */
 
 #include <dt-bindings/clock/imx8mp-clock.h>
@@ -205,6 +205,12 @@
 		dsp_reserved: dsp@92400000 {
 			no-map;
 			reg = <0 0x92400000 0 0x2000000>;
+		};
+
+		/* used only by tuning tool, can be removed for normal case */
+		isp0_reserved: isp0@94400000 {
+			no-map;
+			reg = <0 0x94400000 0 0x10000000>;
 		};
 	};
 
@@ -619,7 +625,7 @@
 				reg = <0x30340000 0x10000>;
 			};
 
-			ocotp: ocotp-ctrl@30350000 {
+			ocotp: efuse@30350000 {
 				compatible = "fsl,imx8mp-ocotp", "fsl,imx8mm-ocotp", "syscon";
 				reg = <0x30350000 0x10000>;
 				clocks = <&clk IMX8MP_CLK_OCOTP_ROOT>;
@@ -1167,7 +1173,7 @@
 				ranges;
 
 				sai1: sai@30c10000 {
-					compatible = "fsl,imx8mq-sai", "fsl,imx6sx-sai";
+					compatible = "fsl,imx8mp-sai", "fsl,imx6sx-sai";
 					reg = <0x30c10000 0x10000>;
 					interrupts = <GIC_SPI 95 IRQ_TYPE_LEVEL_HIGH>;
 					clocks = <&audiomix_clk IMX8MP_CLK_AUDIOMIX_SAI1_IPG>, <&clk IMX8MP_CLK_DUMMY>,
@@ -1183,7 +1189,7 @@
 				};
 
 				sai2: sai@30c20000 {
-					compatible = "fsl,imx8mq-sai", "fsl,imx6sx-sai";
+					compatible = "fsl,imx8mp-sai", "fsl,imx6sx-sai";
 					reg = <0x30c20000 0x10000>;
 					interrupts = <GIC_SPI 96 IRQ_TYPE_LEVEL_HIGH>;
 					clocks = <&audiomix_clk IMX8MP_CLK_AUDIOMIX_SAI2_IPG>, <&clk IMX8MP_CLK_DUMMY>,
@@ -1199,7 +1205,7 @@
 				};
 
 				sai3: sai@30c30000 {
-					compatible = "fsl,imx8mq-sai", "fsl,imx6sx-sai";
+					compatible = "fsl,imx8mp-sai", "fsl,imx6sx-sai";
 					reg = <0x30c30000 0x10000>;
 					interrupts = <GIC_SPI 50 IRQ_TYPE_LEVEL_HIGH>;
 					clocks = <&audiomix_clk IMX8MP_CLK_AUDIOMIX_SAI3_IPG>, <&clk IMX8MP_CLK_DUMMY>,
@@ -1215,7 +1221,7 @@
 				};
 
 				sai5: sai@30c50000 {
-					compatible = "fsl,imx8mq-sai", "fsl,imx6sx-sai";
+					compatible = "fsl,imx8mp-sai", "fsl,imx6sx-sai";
 					reg = <0x30c50000 0x10000>;
 					interrupts = <GIC_SPI 90 IRQ_TYPE_LEVEL_HIGH>;
 					clocks = <&audiomix_clk IMX8MP_CLK_AUDIOMIX_SAI5_IPG>, <&clk IMX8MP_CLK_DUMMY>,
@@ -1231,7 +1237,7 @@
 				};
 
 				sai6: sai@30c60000 {
-					compatible = "fsl,imx8mq-sai", "fsl,imx6sx-sai";
+					compatible = "fsl,imx8mp-sai", "fsl,imx6sx-sai";
 					reg = <0x30c60000 0x10000>;
 					interrupts = <GIC_SPI 90 IRQ_TYPE_LEVEL_HIGH>;
 					clocks = <&audiomix_clk IMX8MP_CLK_AUDIOMIX_SAI6_IPG>,
@@ -1248,7 +1254,7 @@
 				};
 
 				sai7: sai@30c80000 {
-					compatible = "fsl,imx8mq-sai", "fsl,imx6sx-sai";
+					compatible = "fsl,imx8mp-sai", "fsl,imx6sx-sai";
 					reg = <0x30c80000 0x10000>;
 					interrupts = <GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>;
 					clocks = <&audiomix_clk IMX8MP_CLK_AUDIOMIX_SAI7_IPG>, <&clk IMX8MP_CLK_DUMMY>,
@@ -1813,13 +1819,17 @@
 					compatible = "fsl,imx8mp-isp";
 					reg = <0x32e10000 0x10000>;
 					interrupts = <GIC_SPI 74 IRQ_TYPE_LEVEL_HIGH>;
-					clocks = <&clk IMX8MP_CLK_MEDIA_ISP_SRC>;
-					clock-names = "isp_root";
+					clocks = <&clk IMX8MP_CLK_MEDIA_ISP_SRC>,
+						 <&clk IMX8MP_CLK_MEDIA_AXI>,
+						 <&clk IMX8MP_CLK_MEDIA_APB>;
+					clock-names = "core", "axi", "ahb";
 					assigned-clocks = <&clk IMX8MP_CLK_MEDIA_ISP_SRC>;
 					assigned-clock-parents = <&clk IMX8MP_SYS_PLL2_500M>;
 					assigned-clock-rates = <500000000>;
 					power-domains = <&ispdwp_pd>;
 					id = <0>;
+					gpr = <&mediamix_blk_ctl>;
+					memory-region = <&isp0_reserved>;
 					status = "disabled";
 				};
 
@@ -1827,13 +1837,16 @@
 					compatible = "fsl,imx8mp-isp";
 					reg = <0x32e20000 0x10000>;
 					interrupts = <GIC_SPI 75 IRQ_TYPE_LEVEL_HIGH>;
-					clocks = <&clk IMX8MP_CLK_MEDIA_ISP_SRC>;
-					clock-names = "isp_root";
+					clocks = <&clk IMX8MP_CLK_MEDIA_ISP_SRC>,
+						 <&clk IMX8MP_CLK_MEDIA_AXI>,
+						 <&clk IMX8MP_CLK_MEDIA_APB>;
+					clock-names = "core", "axi", "ahb";
 					assigned-clocks = <&clk IMX8MP_CLK_MEDIA_ISP_SRC>;
 					assigned-clock-parents = <&clk IMX8MP_SYS_PLL2_500M>;
 					assigned-clock-rates = <500000000>;
 					power-domains = <&ispdwp_pd>;
 					id = <1>;
+					gpr = <&mediamix_blk_ctl>;
 					status = "disabled";
 				};
 
@@ -1841,6 +1854,15 @@
 					compatible = "fsl,imx8mp-dwe";
 					reg = <0x32e30000 0x10000>;
 					interrupts = <GIC_SPI 100 IRQ_TYPE_LEVEL_HIGH>;
+					clocks = <&clk IMX8MP_CLK_MEDIA_AXI>,
+						 <&clk IMX8MP_CLK_MEDIA_AXI>,
+						 <&clk IMX8MP_CLK_MEDIA_APB>;
+					clock-names = "core", "axi", "ahb";
+					assigned-clocks = <&clk IMX8MP_CLK_MEDIA_AXI_ROOT>,
+							  <&clk IMX8MP_CLK_MEDIA_APB_ROOT>;
+					assigned-clock-rates = <500000000>, <200000000>;
+					power-domains = <&ispdwp_pd>;
+					id = <0>;
 					status = "disabled";
 				};
 
@@ -1874,7 +1896,7 @@
 						 <&clk IMX8MP_CLK_MEDIA_APB>;
 					clock-names = "mipi_clk", "disp_axi", "disp_apb";
 					assigned-clocks = <&clk IMX8MP_CLK_MEDIA_CAM2_PIX>;
-					assigned-clock-parents = <&clk IMX8MP_SYS_PLL2_1000M>;
+					assigned-clock-parents = <&clk IMX8MP_SYS_PLL1_266M>;
 					assigned-clock-rates = <266000000>;
 					bus-width = <4>;
 					csi-gpr = <&mediamix_gasket1>;
@@ -1890,10 +1912,8 @@
 	pcie_phy: pcie-phy@32f00000 {
 		compatible = "fsl,imx8mp-pcie-phy";
 		reg = <0x0 0x32f00000 0x0 0x10000>;
-		clocks = <&clk IMX8MP_CLK_PCIE_PHY>;
+		clocks = <&clk IMX8MP_CLK_DUMMY>;
 		clock-names = "phy";
-		assigned-clocks = <&clk IMX8MP_CLK_PCIE_PHY>;
-		assigned-clock-parents = <&clk IMX8MP_CLK_24M>;
 		#phy-cells = <0>;
 		status = "disabled";
 	};
@@ -1943,6 +1963,7 @@
 		ranges =  <0x81000000 0 0x00000000 0x0 0x1ff80000 0 0x00010000 /* downstream I/O 64KB */
 			   0x82000000 0 0x18000000 0x0 0x18000000 0 0x07f00000>; /* non-prefetchable memory */
 		num-lanes = <1>;
+		num-viewport = <4>;
 		interrupts = <GIC_SPI 140 IRQ_TYPE_LEVEL_HIGH>,
 				<GIC_SPI 127 IRQ_TYPE_LEVEL_HIGH>; /* eDMA */
 		interrupt-names = "msi", "dma";

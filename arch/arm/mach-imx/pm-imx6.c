@@ -9,6 +9,7 @@
 #include <linux/io.h>
 #include <linux/irq.h>
 #include <linux/genalloc.h>
+#include <linux/irqchip/arm-gic.h>
 #include <linux/mfd/syscon.h>
 #include <linux/mfd/syscon/imx6q-iomuxc-gpr.h>
 #include <linux/of.h>
@@ -751,10 +752,12 @@ int imx6_set_lpm(enum mxc_cpu_pwr_mode mode)
 
 static int imx6q_suspend_finish(unsigned long val)
 {
+#if defined(CONFIG_ARM_PSCI_FW)
 	if (psci_ops.cpu_suspend) {
 		return psci_ops.cpu_suspend(MX6Q_SUSPEND_PARAM,
 					    __pa(cpu_resume));
 	}
+#endif
 
 	if (!imx6_suspend_in_ocram_fn) {
 		cpu_do_idle();
@@ -1079,8 +1082,10 @@ static int __init imx6q_suspend_init(const struct imx6_pm_socdata *socdata)
 		return -EINVAL;
 	}
 
+#if defined(CONFIG_ARM_PSCI_FW)
 	if (psci_ops.cpu_suspend)
 		return ret;
+#endif
 
 	/*
 	 * 16KB is allocated for IRAM TLB, but only up 8k is for kernel TLB,
@@ -1257,6 +1262,29 @@ static void __init imx6_pm_common_init(const struct imx6_pm_socdata
 				   IMX6Q_GPR1_GINT);
 }
 
+static void imx6_pm_stby_poweroff(void)
+{
+	gic_cpu_if_down(0);
+	imx6_set_lpm(STOP_POWER_OFF);
+	imx6q_suspend_finish(0);
+
+	mdelay(1000);
+
+	pr_emerg("Unable to poweroff system\n");
+}
+
+static int imx6_pm_stby_poweroff_probe(void)
+{
+	if (pm_power_off) {
+		pr_warn("%s: pm_power_off already claimed  %p %ps!\n",
+			__func__, pm_power_off, pm_power_off);
+		return -EBUSY;
+	}
+
+	pm_power_off = imx6_pm_stby_poweroff;
+	return 0;
+}
+
 void __init imx6_pm_ccm_init(const char *ccm_compat)
 {
 	struct device_node *np;
@@ -1275,17 +1303,60 @@ void __init imx6_pm_ccm_init(const char *ccm_compat)
 	writel_relaxed(val, ccm_base + CLPCR);
 }
 
+void imx6_stop_mode_poweroff(void)
+{
+	/* compare with imx6q_set_lpm */
+	u32 val = readl_relaxed(ccm_base + CLPCR);
+
+	val &= ~BM_CLPCR_LPM;
+	/*
+	 * mask all but the currently running processor,
+	 * otherwise we will not enter stop mode
+	 */
+	val |= smp_processor_id() != 0 ? BM_CLPCR_MASK_CORE0_WFI : 0;
+	val |= smp_processor_id() != 1 ? BM_CLPCR_MASK_CORE1_WFI : 0;
+	val |= smp_processor_id() != 2 ? BM_CLPCR_MASK_CORE2_WFI : 0;
+	val |= smp_processor_id() != 3 ? BM_CLPCR_MASK_CORE3_WFI : 0;
+	val |= BM_CLPCR_MASK_SCU_IDLE;
+	val |= 0x2 << BP_CLPCR_LPM;
+	val |= 0x3 << BP_CLPCR_STBY_COUNT;
+	val |= BM_CLPCR_VSTBY;
+	val |= BM_CLPCR_SBYOS;
+	val |= BM_CLPCR_BYP_MMDC_CH1_LPM_HS;
+
+	imx_gpc_hwirq_unmask(0);
+	writel_relaxed(val, ccm_base + CLPCR);
+	imx_gpc_hwirq_mask(0);
+	imx_gpc_mask_all();
+	cpu_do_idle();
+}
+
 void __init imx6q_pm_init(void)
 {
 	if (imx_mmdc_get_ddr_type() == IMX_DDR_TYPE_LPDDR2)
 		imx6_pm_common_init(&imx6q_lpddr2_pm_data);
 	else
 		imx6_pm_common_init(&imx6q_pm_data);
+	/*
+	 * if no specific power off function in board file, power off system by
+	 * stop mode
+	 */
+	if (!pm_power_off)
+		if (of_machine_is_compatible("toradex,apalis_imx6q"))
+			pm_power_off = imx6_stop_mode_poweroff;
 }
 
 void __init imx6dl_pm_init(void)
 {
 	imx6_pm_common_init(&imx6dl_pm_data);
+
+	/*
+	 * if no specific power off function in board file, power off system by
+	 * stop mode
+	 */
+	if (!pm_power_off)
+		if (of_machine_is_compatible("toradex,colibri_imx6dl"))
+			pm_power_off = imx6_stop_mode_poweroff;
 }
 
 void __init imx6sl_pm_init(void)

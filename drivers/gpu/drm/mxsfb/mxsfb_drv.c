@@ -44,6 +44,9 @@ enum mxsfb_devtype {
 	MXSFB_V4,
 };
 
+/* default output bus width */
+#define MXSFB_DEFAULT_BUS_WIDTH 24
+
 /*
  * When adding new formats, make sure to update the num_formats from
  * mxsfb_devdata below.
@@ -87,6 +90,25 @@ static const struct mxsfb_devdata mxsfb_devdata[] = {
 		.num_formats	= ARRAY_SIZE(mxsfb_formats),
 	},
 };
+
+/*
+ * There are non-atomic versions of clk_enable()/clk_disable() callbacks
+ * used in IMX8QM/IMX8QXP, so we can't manage axi clk in interrupt handlers
+ */
+#if defined(CONFIG_ARCH_FSL_IMX8QM) || defined(CONFIG_ARCH_FSL_IMX8QXP)
+#  define mxsfb_enable_axi_clk(mxsfb) 0
+#  define mxsfb_disable_axi_clk(mxsfb)
+#else
+static inline int mxsfb_enable_axi_clk(struct mxsfb_drm_private *mxsfb)
+{
+	return clk_prepare_enable(mxsfb->clk_axi);
+}
+
+static inline void mxsfb_disable_axi_clk(struct mxsfb_drm_private *mxsfb)
+{
+	clk_disable_unprepare(mxsfb->clk_axi);
+}
+#endif
 
 static struct mxsfb_drm_private *
 drm_pipe_to_mxsfb_drm_private(struct drm_simple_display_pipe *pipe)
@@ -137,8 +159,26 @@ static int mxsfb_atomic_helper_check(struct drm_device *dev,
 	return ret;
 }
 
+static struct drm_framebuffer *
+mxsfb_fb_create(struct drm_device *dev, struct drm_file *file_priv,
+		const struct drm_mode_fb_cmd2 *mode_cmd)
+{
+	const struct drm_format_info *info;
+
+	info = drm_get_format_info(dev, mode_cmd);
+	if (!info)
+		return ERR_PTR(-EINVAL);
+
+	if (mode_cmd->width * info->cpp[0] != mode_cmd->pitches[0]) {
+		dev_dbg(dev->dev, "Invalid pitch: fb width must match pitch\n");
+		return ERR_PTR(-EINVAL);
+	}
+
+	return drm_gem_fb_create(dev, file_priv, mode_cmd);
+}
+
 static const struct drm_mode_config_funcs mxsfb_mode_config_funcs = {
-	.fb_create		= drm_gem_fb_create,
+	.fb_create		= mxsfb_fb_create,
 	.atomic_check		= mxsfb_atomic_helper_check,
 	.atomic_commit		= drm_atomic_helper_commit,
 };
@@ -214,9 +254,17 @@ static void mxsfb_pipe_enable(struct drm_simple_display_pipe *pipe,
 	}
 
 	pm_runtime_get_sync(drm->dev);
-	drm_panel_prepare(mxsfb->panel);
-	mxsfb_crtc_enable(mxsfb);
-	drm_panel_enable(mxsfb->panel);
+	if (mxsfb->panel) {
+		drm_panel_prepare(mxsfb->panel);
+		mxsfb_crtc_enable(mxsfb);
+		drm_panel_enable(mxsfb->panel);
+	}
+
+	if (mxsfb->bridge) {
+		drm_bridge_pre_enable(mxsfb->bridge);
+		mxsfb_crtc_enable(mxsfb);
+		drm_bridge_enable(mxsfb->bridge);
+	}
 }
 
 static void mxsfb_pipe_disable(struct drm_simple_display_pipe *pipe)
@@ -226,9 +274,18 @@ static void mxsfb_pipe_disable(struct drm_simple_display_pipe *pipe)
 	struct drm_crtc *crtc = &pipe->crtc;
 	struct drm_pending_vblank_event *event;
 
-	drm_panel_disable(mxsfb->panel);
-	mxsfb_crtc_disable(mxsfb);
-	drm_panel_unprepare(mxsfb->panel);
+	if (mxsfb->bridge) {
+		drm_bridge_disable(mxsfb->bridge);
+		mxsfb_crtc_disable(mxsfb);
+		drm_bridge_post_disable(mxsfb->bridge);
+	}
+
+	if (mxsfb->panel) {
+		drm_panel_disable(mxsfb->panel);
+		mxsfb_crtc_disable(mxsfb);
+		drm_panel_unprepare(mxsfb->panel);
+	}
+
 	pm_runtime_put_sync(drm->dev);
 
 	spin_lock_irq(&drm->event_lock);
@@ -256,14 +313,14 @@ static int mxsfb_pipe_enable_vblank(struct drm_simple_display_pipe *pipe)
 	struct mxsfb_drm_private *mxsfb = drm_pipe_to_mxsfb_drm_private(pipe);
 	int ret = 0;
 
-	ret = clk_prepare_enable(mxsfb->clk_axi);
+	ret = mxsfb_enable_axi_clk(mxsfb);
 	if (ret)
 		return ret;
 
 	/* Clear and enable VBLANK IRQ */
 	writel(CTRL1_CUR_FRAME_DONE_IRQ, mxsfb->base + LCDC_CTRL1 + REG_CLR);
 	writel(CTRL1_CUR_FRAME_DONE_IRQ_EN, mxsfb->base + LCDC_CTRL1 + REG_SET);
-	clk_disable_unprepare(mxsfb->clk_axi);
+	mxsfb_disable_axi_clk(mxsfb);
 
 	return ret;
 }
@@ -272,13 +329,13 @@ static void mxsfb_pipe_disable_vblank(struct drm_simple_display_pipe *pipe)
 {
 	struct mxsfb_drm_private *mxsfb = drm_pipe_to_mxsfb_drm_private(pipe);
 
-	if (clk_prepare_enable(mxsfb->clk_axi))
+	if (mxsfb_enable_axi_clk(mxsfb))
 		return;
 
 	/* Disable and clear VBLANK IRQ */
 	writel(CTRL1_CUR_FRAME_DONE_IRQ_EN, mxsfb->base + LCDC_CTRL1 + REG_CLR);
 	writel(CTRL1_CUR_FRAME_DONE_IRQ, mxsfb->base + LCDC_CTRL1 + REG_CLR);
-	clk_disable_unprepare(mxsfb->clk_axi);
+	mxsfb_disable_axi_clk(mxsfb);
 }
 
 static struct drm_simple_display_pipe_funcs mxsfb_funcs = {
@@ -297,6 +354,7 @@ static int mxsfb_load(struct drm_device *drm, unsigned long flags)
 	struct platform_device *pdev = to_platform_device(drm->dev);
 	struct mxsfb_drm_private *mxsfb;
 	struct resource *res;
+	u32 bus_width = MXSFB_DEFAULT_BUS_WIDTH;
 	int ret;
 
 	mxsfb = devm_kzalloc(&pdev->dev, sizeof(*mxsfb), GFP_KERNEL);
@@ -331,6 +389,7 @@ static int mxsfb_load(struct drm_device *drm, unsigned long flags)
 		return ret;
 
 	pm_runtime_enable(drm->dev);
+	pm_runtime_get_sync(drm->dev);
 
 	ret = drm_vblank_init(drm, drm->mode_config.num_crtc);
 	if (ret < 0) {
@@ -378,6 +437,10 @@ static int mxsfb_load(struct drm_device *drm, unsigned long flags)
 		}
 	}
 
+	/* bus width is needed to set up correct bus format */
+	of_property_read_u32(drm->dev->of_node, "bus-width", &bus_width);
+	mxsfb->bus_width = bus_width;
+
 	drm->mode_config.min_width	= MXSFB_MIN_XRES;
 	drm->mode_config.min_height	= MXSFB_MIN_YRES;
 	drm->mode_config.max_width	= MXSFB_MAX_XRES;
@@ -405,7 +468,8 @@ static int mxsfb_load(struct drm_device *drm, unsigned long flags)
 	return 0;
 
 err_irq:
-	drm_panel_detach(mxsfb->panel);
+	if (mxsfb->panel)
+		drm_panel_detach(mxsfb->panel);
 err_vblank:
 	pm_runtime_disable(drm->dev);
 
@@ -423,6 +487,7 @@ static void mxsfb_unload(struct drm_device *drm)
 
 	drm->dev_private = NULL;
 
+	pm_runtime_put_sync(drm->dev);
 	pm_runtime_disable(drm->dev);
 }
 
@@ -439,7 +504,7 @@ static irqreturn_t mxsfb_irq_handler(int irq, void *data)
 	struct mxsfb_drm_private *mxsfb = drm->dev_private;
 	u32 reg;
 
-	clk_prepare_enable(mxsfb->clk_axi);
+	mxsfb_enable_axi_clk(mxsfb);
 
 	reg = readl(mxsfb->base + LCDC_CTRL1);
 
@@ -448,7 +513,7 @@ static irqreturn_t mxsfb_irq_handler(int irq, void *data)
 
 	writel(CTRL1_CUR_FRAME_DONE_IRQ, mxsfb->base + LCDC_CTRL1 + REG_CLR);
 
-	clk_disable_unprepare(mxsfb->clk_axi);
+	mxsfb_disable_axi_clk(mxsfb);
 
 	return IRQ_HANDLED;
 }

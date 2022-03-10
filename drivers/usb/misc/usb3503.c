@@ -46,7 +46,9 @@ struct usb3503 {
 	struct regmap		*regmap;
 	struct device		*dev;
 	struct clk		*clk;
+	u8	port_nrd;
 	u8	port_off_mask;
+	int	gpio_bypass;
 	int	gpio_intn;
 	int	gpio_reset;
 	int	gpio_connect;
@@ -60,6 +62,9 @@ static int usb3503_reset(struct usb3503 *hub, int state)
 
 	if (gpio_is_valid(hub->gpio_reset))
 		gpio_set_value_cansleep(hub->gpio_reset, state);
+
+	if (gpio_is_valid(hub->gpio_bypass))
+		gpio_set_value_cansleep(hub->gpio_bypass, state);
 
 	/* Wait T_HUBINIT == 4ms for hub logic to stabilize */
 	if (state)
@@ -87,8 +92,7 @@ static int usb3503_connect(struct usb3503 *hub)
 
 		/* PDS : Set the ports which are disabled in self-powered mode. */
 		if (hub->port_off_mask) {
-			err = regmap_update_bits(hub->regmap, USB3503_PDS,
-					hub->port_off_mask,
+			err = regmap_write(hub->regmap, USB3503_PDS,
 					hub->port_off_mask);
 			if (err < 0) {
 				dev_err(dev, "PDS failed (%d)\n", err);
@@ -105,12 +109,22 @@ static int usb3503_connect(struct usb3503 *hub)
 			return err;
 		}
 
+		/* NRD : Set non removable ports. */
+		if (hub->port_nrd) {
+			err = regmap_write(hub->regmap, USB3503_NRD,
+					 hub->port_nrd);
+			if (err < 0) {
+				dev_err(dev, "NRD failed (%d)\n", err);
+				return err;
+			}
+		}
+
 		/* SP_LOCK: clear connect_n, config_n for hub connect */
 		err = regmap_update_bits(hub->regmap, USB3503_SP_ILOCK,
 					 (USB3503_SPILOCK_CONNECT
 					  | USB3503_SPILOCK_CONFIG), 0);
 		if (err < 0) {
-			dev_err(dev, "SP_ILOCK failed (%d)\n", err);
+			dev_err(dev, "SP_ILOCK 2 failed (%d)\n", err);
 			return err;
 		}
 	}
@@ -166,7 +180,9 @@ static int usb3503_probe(struct usb3503 *hub)
 	int len;
 
 	if (pdata) {
+		hub->port_nrd		= pdata->port_nrd;
 		hub->port_off_mask	= pdata->port_off_mask;
+		hub->gpio_bypass	= pdata->gpio_bypass;
 		hub->gpio_intn		= pdata->gpio_intn;
 		hub->gpio_connect	= pdata->gpio_connect;
 		hub->gpio_reset		= pdata->gpio_reset;
@@ -225,8 +241,20 @@ static int usb3503_probe(struct usb3503 *hub)
 			int i;
 			for (i = 0; i < len / sizeof(u32); i++) {
 				u32 port = be32_to_cpu(property[i]);
+				dev_dbg(dev, "disabled-ports, port: %d\n", port);
 				if ((1 <= port) && (port <= 3))
 					hub->port_off_mask |= (1 << port);
+			}
+		}
+
+		property = of_get_property(np, "non-removable-devices", &len);
+		if (property && (len / sizeof(u32)) > 0) {
+			int i;
+			for (i = 0; i < len / sizeof(u32); i++) {
+				u32 port = be32_to_cpu(property[i]);
+				dev_dbg(dev, "non-removable-devices, port: %d\n", port);
+				if ((1 <= port) && (port <= 3))
+					hub->port_nrd |= (1 << port);
 			}
 		}
 
@@ -235,6 +263,9 @@ static int usb3503_probe(struct usb3503 *hub)
 			return -EPROBE_DEFER;
 		hub->gpio_connect = of_get_named_gpio(np, "connect-gpios", 0);
 		if (hub->gpio_connect == -EPROBE_DEFER)
+			return -EPROBE_DEFER;
+		hub->gpio_bypass = of_get_named_gpio(np, "bypass-gpios", 0);
+		if (hub->gpio_bypass == -EPROBE_DEFER)
 			return -EPROBE_DEFER;
 		hub->gpio_reset = of_get_named_gpio(np, "reset-gpios", 0);
 		if (hub->gpio_reset == -EPROBE_DEFER)
@@ -266,6 +297,17 @@ static int usb3503_probe(struct usb3503 *hub)
 			dev_err(dev,
 				"unable to request GPIO %d as connect pin (%d)\n",
 				hub->gpio_connect, err);
+			return err;
+		}
+	}
+
+	if (gpio_is_valid(hub->gpio_bypass)) {
+		err = devm_gpio_request_one(dev, hub->gpio_bypass,
+				GPIOF_OUT_INIT_LOW, "usb3503 bypass");
+		if (err) {
+			dev_err(dev,
+				"unable to request GPIO %d as bypass pin (%d)\n",
+				hub->gpio_bypass, err);
 			return err;
 		}
 	}
@@ -404,6 +446,7 @@ MODULE_DEVICE_TABLE(i2c, usb3503_id);
 static const struct of_device_id usb3503_of_match[] = {
 	{ .compatible = "smsc,usb3503", },
 	{ .compatible = "smsc,usb3503a", },
+	{ .compatible = "smsc,usb3803", },
 	{},
 };
 MODULE_DEVICE_TABLE(of, usb3503_of_match);

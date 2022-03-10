@@ -29,10 +29,22 @@ obj-$(CONFIG_MXC_CAMERA_OV5640_MIPI) += ov5640_camera_mipi_int.o
 ov5640_camera_mipi_v2-objs := ov5640_mipi_v2.o
 obj-$(CONFIG_MXC_CAMERA_OV5640_MIPI_V2) += ov5640_camera_mipi_v2.o
 
+ov5640_camera_mipi_nv-objs := ov5640_mipi_nv.o
+obj-$(CONFIG_MXC_CAMERA_OV5640_MIPI_NV) += ov5640_camera_mipi_nv.o
+
 ov5647_camera_mipi-objs := ov5647_mipi.o
 obj-$(CONFIG_MXC_CAMERA_OV5647_MIPI) += ov5647_camera_mipi.o
 
+tc358743_h2c_bridge-objs := tc358743_h2c.o
+obj-$(CONFIG_MXC_HDMI_CSI2_TC358743) += tc358743_h2c_bridge.o
+
 adv7180_tvin-objs := adv7180.o
 obj-$(CONFIG_MXC_TVIN_ADV7180) += adv7180_tvin.o
+
+adv7280_tvin-objs := adv7280.o
+obj-$(CONFIG_MXC_TVIN_ADV7280) += adv7280_tvin.o
+
+max9526_tvin-objs := max9526.o
+obj-$(CONFIG_MXC_TVIN_MAX9526) += max9526_tvin.o
 
 obj-$(CONFIG_VIDEO_V4L2_MXC_INT_DEVICE) += v4l2-int-device.o

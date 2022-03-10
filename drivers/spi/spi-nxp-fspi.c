@@ -1031,6 +1031,7 @@ static int nxp_fspi_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct nxp_fspi *f;
 	int ret;
+	u32 reg;
 
 	ctlr = spi_alloc_master(&pdev->dev, sizeof(*f));
 	if (!ctlr)
@@ -1091,6 +1092,11 @@ static int nxp_fspi_probe(struct platform_device *pdev)
 		dev_err(f->dev, "Failed to enable clock %d\n", __LINE__);
 		goto err_put_ctrl;
 	}
+
+	/* Clear potential interrupts */
+	reg = fspi_readl(f, f->iobase + FSPI_INTR);
+	if (reg)
+		fspi_writel(f, reg, f->iobase + FSPI_INTR);
 
 	/* find the irq */
 	ret = platform_get_irq(pdev, 0);

@@ -73,6 +73,17 @@ static struct fsl_sai_soc_data fsl_sai_imx7ulp = {
 	.constrain_period_size = false,
 };
 
+static struct fsl_sai_soc_data fsl_sai_imx8mp = {
+	.imx = true,
+	.dataline = 0xff,
+	.fifos = 8,
+	.fifo_depth = 128,
+	.flags = 0,
+	.reg_offset = 8,
+	.constrain_period_size = false,
+	.mclk_gated_by_bce = true,
+};
+
 static struct fsl_sai_soc_data fsl_sai_imx8mq = {
 	.imx = true,
 	.dataline = 0xff,
@@ -778,6 +789,18 @@ static int fsl_sai_hw_params(struct snd_pcm_substream *substream,
 			   FSL_SAI_CR5_FBT_MASK, val_cr5);
 	regmap_write(sai->regmap, FSL_SAI_xMR(tx),
 			~0UL - ((1 << min(channels, slots)) - 1));
+
+	/*
+	 * Some audio codecs need the MCLK during setup of the codec, however
+	 * for the i.MX 8M Plus it is gated with the receiver/transmiter BCE
+	 * bit. So enable the bit already here.
+	 */
+	if (sai->soc->mclk_gated_by_bce) {
+		/* Switch on MCLK early */
+		regmap_update_bits(sai->regmap, FSL_SAI_xCSR(tx, offset),
+				   FSL_SAI_CSR_BCE, FSL_SAI_CSR_BCE);
+	}
+
 	return 0;
 }
 
@@ -993,10 +1016,10 @@ static int fsl_sai_dai_probe(struct snd_soc_dai *cpu_dai)
 	unsigned char offset = sai->soc->reg_offset;
 
 	regmap_update_bits(sai->regmap, FSL_SAI_TCR1(offset),
-				sai->soc->fifo_depth - 1,
+				FSL_SAI_CR1_RFW_MASK(sai->soc->fifo_depth),
 				sai->soc->fifo_depth - FSL_SAI_MAXBURST_TX);
 	regmap_update_bits(sai->regmap, FSL_SAI_RCR1(offset),
-				sai->soc->fifo_depth - 1,
+				FSL_SAI_CR1_RFW_MASK(sai->soc->fifo_depth),
 				FSL_SAI_MAXBURST_RX - 1);
 
 	snd_soc_dai_init_dma_data(cpu_dai, &sai->dma_params_tx,
@@ -1266,6 +1289,7 @@ static const struct of_device_id fsl_sai_ids[] = {
 	{ .compatible = "fsl,imx6sx-sai", .data = &fsl_sai_imx6sx },
 	{ .compatible = "fsl,imx6ul-sai", .data = &fsl_sai_imx6ul },
 	{ .compatible = "fsl,imx7ulp-sai", .data = &fsl_sai_imx7ulp },
+	{ .compatible = "fsl,imx8mp-sai", .data = &fsl_sai_imx8mp },
 	{ .compatible = "fsl,imx8mq-sai", .data = &fsl_sai_imx8mq },
 	{ .compatible = "fsl,imx8qm-sai", .data = &fsl_sai_imx8qm },
 	{ /* sentinel */ }
@@ -1463,6 +1487,9 @@ static int fsl_sai_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	memcpy(&sai->cpu_dai_drv, &fsl_sai_dai_template,
+	       sizeof(fsl_sai_dai_template));
+
 	/* Sync Tx with Rx as default by following old DT binding */
 	sai->synchronous[RX] = true;
 	sai->synchronous[TX] = false;
@@ -1553,7 +1580,7 @@ static int fsl_sai_probe(struct platform_device *pdev)
 	regcache_cache_only(sai->regmap, true);
 
 	ret = devm_snd_soc_register_component(&pdev->dev, &fsl_component,
-			&sai->cpu_dai_drv, 1);
+					      &sai->cpu_dai_drv, 1);
 	if (ret)
 		return ret;
 

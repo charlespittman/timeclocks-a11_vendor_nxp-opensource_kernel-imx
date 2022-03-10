@@ -401,7 +401,11 @@ dtb-$(CONFIG_SOC_IMX6Q) += \
 	imx6dl-aristainetos_7.dtb \
 	imx6dl-aristainetos2_4.dtb \
 	imx6dl-aristainetos2_7.dtb \
+	imx6dl-colibri-aster.dtb \
+	imx6dl-colibri-cam-eval-v3.dtb \
 	imx6dl-colibri-eval-v3.dtb \
+	imx6dl-colibri-iris.dtb \
+	imx6dl-colibri-iris-v2.dtb \
 	imx6dl-cubox-i.dtb \
 	imx6dl-cubox-i-emmc-som-v15.dtb \
 	imx6dl-cubox-i-som-v15.dtb \
@@ -472,6 +476,7 @@ dtb-$(CONFIG_SOC_IMX6Q) += \
 	imx6q-apalis-eval.dtb \
 	imx6q-apalis-ixora.dtb \
 	imx6q-apalis-ixora-v1.1.dtb \
+	imx6q-apalis-ixora-v1.2.dtb \
 	imx6q-apf6dev.dtb \
 	imx6q-arm2.dtb \
 	imx6q-b450v3.dtb \
@@ -644,7 +649,17 @@ dtb-$(CONFIG_SOC_IMX6UL) += \
 	imx6ull-9x9-evk-ldo.dtb \
 	imx6ull-9x9-evk-btwifi.dtb \
 	imx6ull-9x9-evk-btwifi-oob.dtb \
+	imx6ull-colibri-aster.dtb \
+	imx6ull-colibri-emmc-aster.dtb \
+	imx6ull-colibri-emmc-eval-v3.dtb \
+	imx6ull-colibri-emmc-iris.dtb \
+	imx6ull-colibri-emmc-iris-v2.dtb \
 	imx6ull-colibri-eval-v3.dtb \
+	imx6ull-colibri-iris.dtb \
+	imx6ull-colibri-iris-v2.dtb \
+	imx6ull-colibri-wifi-aster.dtb \
+	imx6ull-colibri-wifi-iris.dtb \
+	imx6ull-colibri-wifi-iris-v2.dtb \
 	imx6ull-colibri-wifi-eval-v3.dtb \
 	imx6ull-phytec-segin-ff-rdk-nand.dtb \
 	imx6ull-phytec-segin-ff-rdk-emmc.dtb \
@@ -655,6 +670,12 @@ dtb-$(CONFIG_SOC_IMX6UL) += \
 	imx6ulz-14x14-evk-emmc.dtb
 dtb-$(CONFIG_SOC_IMX7D) += \
 	imx7d-cl-som-imx7.dtb \
+	imx7d-colibri-aster.dtb \
+	imx7d-colibri-iris.dtb \
+	imx7d-colibri-iris-v2.dtb \
+	imx7d-colibri-emmc-aster.dtb \
+	imx7d-colibri-emmc-iris.dtb \
+	imx7d-colibri-emmc-iris-v2.dtb \
 	imx7d-colibri-emmc-eval-v3.dtb \
 	imx7d-colibri-eval-v3.dtb \
 	imx7d-mba7.dtb \
@@ -663,6 +684,9 @@ dtb-$(CONFIG_SOC_IMX7D) += \
 	imx7d-pico-hobbit.dtb \
 	imx7d-pico-pi.dtb \
 	imx7d-sbc-imx7.dtb \
+	imx7s-colibri-aster.dtb \
+	imx7s-colibri-iris.dtb \
+	imx7s-colibri-iris-v2.dtb \
 	imx7d-sdb.dtb \
 	imx7d-sdb-epdc.dtb \
 	imx7d-sdb-mipi-dsi.dtb \

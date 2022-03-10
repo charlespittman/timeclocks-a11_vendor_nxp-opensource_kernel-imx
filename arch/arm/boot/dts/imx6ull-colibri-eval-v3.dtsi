@@ -3,9 +3,24 @@
  * Copyright 2017 Toradex AG
  */
 
+#include <dt-bindings/pwm/pwm.h>
+
 / {
 	chosen {
 		stdout-path = "serial0:115200n8";
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_snvs_gpiokeys>;
+		power {
+			label = "Wake-Up";
+			gpios = <&gpio5 1 GPIO_ACTIVE_HIGH>;
+			linux,code = <KEY_WAKEUP>;
+			debounce-interval = <10>;
+			wakeup-source;
+		};
 	};
 
 	/* fixed crystal dedicated to mcp2515 */
@@ -15,16 +30,12 @@
 		clock-frequency = <16000000>;
 	};
 
-	panel: panel {
-		compatible = "edt,et057090dhu";
-		backlight = <&bl>;
-		power-supply = <&reg_3v3>;
-
-		port {
-			panel_in: endpoint {
-				remote-endpoint = <&lcdif_out>;
-			};
-		};
+	extcon_usbc_det: usbc_det {
+		compatible = "linux,extcon-usb-gpio";
+		debounce = <25>;
+		id-gpio = <&gpio5 2 GPIO_ACTIVE_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_snvs_usbc_det>;
 	};
 
 	reg_3v3: regulator-3v3 {
@@ -57,11 +68,7 @@
 	status = "okay";
 };
 
-&bl {
-	brightness-levels = <0 4 8 16 32 64 128 255>;
-	default-brightness-level = <6>;
-	power-supply = <&reg_3v3>;
-	pwms = <&pwm4 0 5000000 1>;
+&pxp {
 	status = "okay";
 };
 
@@ -81,6 +88,25 @@
 		xceiver-supply = <&reg_5v0>;
 		status = "okay";
 	};
+
+	/* To keep the CAN controller enabled by default,
+	 * disable conflicting spidev.
+	 */
+	spidev0: spidev@0 {
+		status = "disabled";
+	};
+};
+
+&can1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_flexcan1>;
+	status = "disabled";
+};
+
+&can2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_flexcan2>;
+	status = "disabled";
 };
 
 &i2c1 {
@@ -93,20 +119,24 @@
 	};
 };
 
-&lcdif {
-	status = "okay";
 
-	port {
-		lcdif_out: endpoint {
-			remote-endpoint = <&panel_in>;
-		};
-	};
+&atmel_mxt_ts {
+        pinctrl-0 = <&pinctrl_atmel_adap>;
+        interrupt-parent = <&gpio4>;
+        interrupts = <16 IRQ_TYPE_EDGE_FALLING>;   /* SODIMM 28, INT */
+        reset-gpios = <&gpio2 5 GPIO_ACTIVE_HIGH>; /* SODIMM 30, RST */
+        status = "disabled";
 };
 
 /* PWM <A> */
 &pwm4 {
 	status = "okay";
 };
+
+/*
+ * the PCAPs use SODIMM 28/30, also used for PWM<B>, PWM<C>, aka pwm5,
+ * pwm6. so if you enable one of the PCAP controllers disable the pwms
+ */
 
 /* PWM <B> */
 &pwm5 {
@@ -136,6 +166,8 @@
 };
 
 &usbotg1 {
+	extcon = <&extcon_usbc_det &extcon_usbc_det>;
+	vbus-supply = <&reg_usbh_vbus>;
 	status = "okay";
 };
 
@@ -145,20 +177,17 @@
 };
 
 &usdhc1 {
-	pinctrl-names = "default", "state_100mhz", "state_200mhz", "sleep";
-	pinctrl-0 = <&pinctrl_usdhc1 &pinctrl_snvs_usdhc1_cd>;
-	pinctrl-1 = <&pinctrl_usdhc1_100mhz &pinctrl_snvs_usdhc1_cd>;
-	pinctrl-2 = <&pinctrl_usdhc1_200mhz &pinctrl_snvs_usdhc1_cd>;
-	pinctrl-3 = <&pinctrl_usdhc1 &pinctrl_snvs_usdhc1_sleep_cd>;
-	cd-gpios = <&gpio5 0 GPIO_ACTIVE_LOW>;
-	disable-wp;
-	wakeup-source;
-	keep-power-in-suspend;
 	vmmc-supply = <&reg_3v3>;
-	vqmmc-supply = <&reg_sd1_vmmc>;
-	sd-uhs-sdr12;
-	sd-uhs-sdr25;
-	sd-uhs-sdr50;
-	sd-uhs-sdr104;
 	status = "okay";
+};
+
+&iomuxc {
+	imx6ull-colibri {
+	pinctrl_gpiotouch: touchgpios {
+		fsl,pins = <
+			MX6UL_PAD_NAND_DQS__GPIO4_IO16		0x74
+			MX6UL_PAD_ENET1_TX_EN__GPIO2_IO05	0x14
+		>;
+	};
+	};
 };
