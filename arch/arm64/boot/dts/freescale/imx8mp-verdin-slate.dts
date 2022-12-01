@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: GPL-2.0+ OR MIT
+/*
+ * Copyright 2020 Toradex
+ */
+
+/dts-v1/;
+
+#include "imx8mp-verdin-wifi-dahlia.dts"
+
+/ {
+	model = "Toradex Verdin iMX8M Plus WB on SmartLinx Slate Board";
+	compatible = "toradex,verdin-imx8mp-wifi-slate",
+		     "toradex,verdin-imx8mp-wifi",
+		     "toradex,verdin-imx8mp",
+		     "fsl,imx8mp";
+};

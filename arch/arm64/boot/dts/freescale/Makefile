@@ -81,6 +81,7 @@ dtb-$(CONFIG_ARCH_MXC) += imx8mp-evk.dtb imx8mp-evk-root.dtb imx8mp-evk-inmate.d
 			  imx8mp-verdin-nonwifi-dahlia.dtb \
 			  imx8mp-verdin-nonwifi-dev.dtb \
 			  imx8mp-verdin-wifi-dahlia.dtb \
+			  imx8mp-verdin-slate.dtb \
 			  imx8mp-verdin-wifi-dev.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-ddr4-evk.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mq-evk.dtb imx8mq-evk-rpmsg.dtb imx8mq-evk-pcie1-m2.dtb imx8mq-evk-usd-wifi.dtb \
