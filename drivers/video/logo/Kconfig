@@ -68,6 +68,10 @@ config LOGO_SUPERH_CLUT224
 	depends on SUPERH
 	default y
 
+config LOGO_SLX_CLUT224
+        bool "224-color Smartlinx Linux logo"
+        default n
+
 config LOGO_CUSTOM_CLUT224
 	bool "Custom 224-color Linux logo"
 	default n
