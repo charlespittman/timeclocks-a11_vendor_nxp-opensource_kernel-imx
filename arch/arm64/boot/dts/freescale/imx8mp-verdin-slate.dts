@@ -13,4 +13,135 @@
 		     "toradex,verdin-imx8mp-wifi",
 		     "toradex,verdin-imx8mp",
 		     "fsl,imx8mp";
+
+&backlight {
+	status = "okay";
+	brightness-levels = < 0  1  2  3  4  5  6  7  8  9
+                             10 11 12 13 14 15 16 17 18 19
+                             20 21 22 23 24 25 26 27 28 29
+                             30 31 32 33 34 35 36 37 38 39
+                             40 41 42 43 44 45 46 47 48 49
+                             50 51 52 53 54 55 56 57 58 59
+                             60 61 62 63 64 65 66 67 68 69
+                             70 71 72 73 74 75 76 77 78 79
+                             80 81 82 83 84 85 86 87 88 89
+                             90 91 92 93 94 95 96 97 98 99
+                             100>;
+	default-brightness-level = <80>;
+	pwms = <&pwm1 0 6666667 0>;
+};
+
+&gpu_2d {
+	status = "okay";
+};
+
+&gpu_3d {
+	status = "okay";
+};
+
+/* LCDIF to MIPI-DSI */
+&lcdif1 {
+	status = "okay";
+};
+
+&lvds_ti_sn65dsi83 {
+	status = "okay";
+	ti,dsi-lanes = <4>;
+	ti,height-mm = <136>;
+	ti,lvds-bpp = <24>;
+	ti,lvds-format = <2>;
+	ti,width-mm = <217>;
+
+	port {
+		dsi85_in: endpoint {
+			remote-endpoint = <&mipi_dsi_bridge1_out>;
+		};
+	};
+
+	display-timings {
+		native-mode = <&lvds_timing0>;
+
+		lvds_timing0: lt170410_2whc {
+			/*
+			 * PLL1 is at 2079000000, take PLL1/30
+			 * otherwise we don't get a picture on NXP i.MX 8M Plus
+			 */
+			clock-frequency = <68900000 71100000 73400000>;
+			hactive = <1280 1280 1280>;
+			hfront-porch = <23 60 71>;
+			hback-porch = <23 60 71>;
+			hsync-len = <15 40 47>;
+			vactive = <800 800 800>;
+			vfront-porch = <5 7 10>;
+			vback-porch = <5 7 10>;
+			vsync-len = <6 9 12>;
+			de-active = <1>;
+			pixelclk-active = <1>;
+		};
+	};
+};
+
+&mipi_dsi {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+
+	port@1 {
+		mipi_dsi_bridge1_out: endpoint {
+			remote-endpoint = <&dsi85_in>;
+			attach-bridge;
+		};
+	};
+};
+
+&mix_gpu_ml {
+	status = "okay";
+};
+
+&ml_vipsi {
+	status = "okay";
+};
+
+&iomuxc {
+        pinctrl_ts: ts_grp {
+                fsl,pins = <
+                        MX8MP_IOMUXC_GPIO1_IO08__GPIO1_IO08             0x16   /* SODIMM 218 */
+                        MX8MP_IOMUXC_SAI1_RXD1__GPIO4_IO03              0x16   /* SODIMM 220 */
+                >;
+        };
+};
+
+&i2c4 {
+        clock-frequency = <100000>;
+
+        /* Capacitive touch controller */
+        ft5x06_ts: ft5x06_ts@38 {
+             compatible = "edt,edt-ft5206";
+             reg = <0x38>;
+             pinctrl-names = "default";
+             pinctrl-0 = <&pinctrl_ts>;
+             reset-gpios = <&gpio1 8 GPIO_ACTIVE_LOW>;
+             interrupt-parent = <&gpio4>;
+             interrupts = <3 IRQ_TYPE_EDGE_FALLING>;
+             touchscreen-size-x = <1280>;
+             touchscreen-size-y = <800>;
+             wakeup-source;
+             status = "okay";
+        };
+
+         gt928_ts: gt928@5d {
+	     status = "okay";
+             compatible = "goodix,gt928";
+             reg = <0x5d>;
+             pinctrl-names = "default";
+             pinctrl-0 = <&pinctrl_ts>;
+             reset-gpios = <&gpio1 8 GPIO_ACTIVE_LOW>;
+             interrupt-parent = <&gpio4>;
+             interrupts = <3 IRQ_TYPE_EDGE_FALLING>;
+             irq-gpios = <&gpio4 3 GPIO_ACTIVE_HIGH>;
+             touchscreen-size-x = <1280>;
+             touchscreen-size-y = <800>;
+             touchscreen-max-w = <512>;
+             touchscreen-max-p = <512>;
+        };
 };

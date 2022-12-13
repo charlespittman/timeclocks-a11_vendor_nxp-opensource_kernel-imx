@@ -1010,18 +1010,6 @@
 		>;
 	};
 
-	pinctrl_gpio7: gpio7grp {
-		fsl,pins = <
-			MX8MP_IOMUXC_SAI1_RXD1__GPIO4_IO03		0x184	/* SODIMM 220 */
-		>;
-	};
-
-	pinctrl_gpio8: gpio8grp {
-		fsl,pins = <
-			MX8MP_IOMUXC_SAI1_RXC__GPIO4_IO01		0x184	/* SODIMM 222 */
-		>;
-	};
-
 	/* Verdin GPIO_9_DSI (pulled-up as active-low) */
 	pinctrl_gpio_9_dsi: gpio9dsigrp {
 		fsl,pins = <
