@@ -14,6 +14,66 @@
 		     "toradex,verdin-imx8mp",
 		     "fsl,imx8mp";
 
+	matrix-keypad {
+		status = "okay";
+		compatible = "gpio-matrix-keypad";
+		debounce-delay-ms = <10>;
+		col-scan-delay-us = <10>;
+		drive-inactive-cols;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_matrix>;
+
+		row-gpios = <
+			&gpio2 17 0
+			&gpio2 18 0
+			&gpio2 14 0
+			&gpio4 22 0
+		>;
+
+		col-gpios = <
+			&gpio2 13 0
+			&gpio2 15 0
+			&gpio2 16 0
+			&gpio2 12 0
+		>;
+
+		linux,keymap = <
+			// col0 row0 KEY_A
+			0x0000001e
+			// col0 row1 KEY_B
+			0x01000030
+			// col0 row2 KEY_C
+			0x0200002e
+			// col0 row3 KEY_D
+			0x03000020
+			// col1 row0 KEY_1
+			0x00010002
+			// col1 row1 KEY_4
+			0x01010005
+			// col1 row2 KEY_7
+			0x02010008
+			// col1 row3 KEY_BACKSPACE
+			0x0301000e
+			// col2 row0 KEY_2
+			0x00020003
+			// col2 row1 KEY_5
+			0x01020006
+			// col2 row2 KEY_8
+			0x02020009
+			// col2 row3 KEY_0
+			0x0302000b
+			// col3 row0 KEY_3
+			0x00030004
+			// col3 row1 KEY_6
+			0x01030007
+			// col3 row2 KEY_9
+			0x0203000a
+			// col3 row3 KEY_ENTER
+			0x0303001c
+		>;
+	};
+};
+
 &backlight {
 	status = "okay";
 	brightness-levels = < 0  1  2  3  4  5  6  7  8  9
@@ -109,6 +169,28 @@
                         MX8MP_IOMUXC_SAI1_RXD1__GPIO4_IO03              0x16   /* SODIMM 220 */
                 >;
         };
+
+	pinctrl_matrix: matrix_grp {
+		fsl,pins = <
+			MX8MP_IOMUXC_SD2_DATA2__GPIO2_IO17      0x1c5   /* SODIMM 70 */
+			MX8MP_IOMUXC_SD2_DATA3__GPIO2_IO18      0x1c5   /* SODIMM 72 */
+			MX8MP_IOMUXC_SD2_CMD__GPIO2_IO14        0x1c5   /* SODIMM 74 */
+			MX8MP_IOMUXC_SAI2_RXC__GPIO4_IO22       0x1c5   /* SODIMM 76 */
+			MX8MP_IOMUXC_SD2_CLK__GPIO2_IO13        0x1c5   /* SODIMM 78 */
+			MX8MP_IOMUXC_SD2_DATA0__GPIO2_IO15      0x1c5   /* SODIMM 80 */
+			MX8MP_IOMUXC_SD2_DATA1__GPIO2_IO16      0x1c5   /* SODIMM 82 */
+			MX8MP_IOMUXC_SD2_CD_B__GPIO2_IO12       0x1c5   /* SODIMM 84 */
+		>;
+	};
+
+	pinctrl_led: led_grp {
+		fsl,pins = <
+			MX8MP_IOMUXC_ECSPI1_SCLK__GPIO5_IO06    0x4   /* SODIMM 196 */
+			MX8MP_IOMUXC_ECSPI1_MISO__GPIO5_IO08    0x4   /* SODIMM 198 */
+			MX8MP_IOMUXC_ECSPI1_MOSI__GPIO5_IO07    0x4   /* SODIMM 200 */
+			MX8MP_IOMUXC_ECSPI1_SS0__GPIO5_IO09     0x4   /* SODIMM 202 */
+		>;
+	};
 };
 
 &i2c4 {
