@@ -170,18 +170,7 @@
 	};
 
 	reg_usdhc2_vmmc: regulator-usdhc2 {
-		compatible = "regulator-fixed";
-		enable-active-high;
-		/* Verdin SD_1_PWR_EN (SODIMM 76) */
-		gpio = <&gpio4 22 GPIO_ACTIVE_HIGH>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_usdhc2_pwr_en>;
-		regulator-max-microvolt = <3300000>;
-		regulator-min-microvolt = <3300000>;
-		regulator-name = "+V3.3_SD";
-		startup-delay-us = <2000>;
-		off-on-delay = <100000>;
-		vin-supply = <&buck4_reg>;
+		status = "disabled";
 	};
 
 	reserved-memory {
@@ -210,11 +199,7 @@
 
 /* Verdin SPI_1 */
 &ecspi1 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_ecspi1>;
-	cs-gpios = <&gpio5 9 GPIO_ACTIVE_LOW>;
+	status = "disabled";
 };
 
 /* Verdin ETH_1 (on-module PHY) */
@@ -294,6 +279,11 @@
 		spi-nor,ddr-quad-read-dummy = <6>;
 	};
 #endif
+};
+
+/* Verdin QSPI_1 */
+&flexspi {
+	status = "disabled";
 };
 
 &gpio1 {
@@ -761,7 +751,6 @@
 &uart2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart2>;
-	fsl,uart-has-rtscts;
 };
 
 /* Verdin UART_3, used as the Linux Console */
@@ -809,14 +798,7 @@
 
 /* Verdin SD_1 */
 &usdhc2 {
-	bus-width = <4>;
-	cd-gpios = <&gpio2 12 GPIO_ACTIVE_LOW>;
-	disable-wp;
-	pinctrl-names = "default", "state_100mhz", "state_200mhz";
-	pinctrl-0 = <&pinctrl_usdhc2>, <&pinctrl_usdhc2_cd>;
-	pinctrl-1 = <&pinctrl_usdhc2_100mhz>, <&pinctrl_usdhc2_cd>;
-	pinctrl-2 = <&pinctrl_usdhc2_200mhz>, <&pinctrl_usdhc2_cd>;
-	vmmc-supply = <&reg_usdhc2_vmmc>;
+	status = "disabled";
 };
 
 /* On-module eMMC */
@@ -867,15 +849,6 @@
 	pinctrl_ctrl_sleep_moci: ctrlsleepmocigrp {
 		fsl,pins = <
 			MX8MP_IOMUXC_SAI3_RXC__GPIO4_IO29		0x1c4	/* SODIMM 256 */
-		>;
-	};
-
-	pinctrl_ecspi1: ecspi1grp {
-		fsl,pins = <
-			MX8MP_IOMUXC_ECSPI1_SCLK__ECSPI1_SCLK		0x4	/* SODIMM 196 */
-			MX8MP_IOMUXC_ECSPI1_MOSI__ECSPI1_MOSI		0x4	/* SODIMM 200 */
-			MX8MP_IOMUXC_ECSPI1_MISO__ECSPI1_MISO		0x1c4	/* SODIMM 198 */
-			MX8MP_IOMUXC_ECSPI1_SS0__GPIO5_IO09		0x1c4	/* SODIMM 202 */
 		>;
 	};
 
@@ -1293,54 +1266,6 @@
 			MX8MP_IOMUXC_SD1_DATA1__USDHC1_DATA1	0x1d6
 			MX8MP_IOMUXC_SD1_DATA2__USDHC1_DATA2	0x1d6
 			MX8MP_IOMUXC_SD1_DATA3__USDHC1_DATA3	0x1d6
-		>;
-	};
-
-	pinctrl_usdhc2_cd: usdhc2cdgrp {
-		fsl,pins = <
-			MX8MP_IOMUXC_SD2_CD_B__GPIO2_IO12	0x1c4	/* SODIMM 84 */
-		>;
-	};
-
-	pinctrl_usdhc2_pwr_en: usdhc2pwrengrp {
-		fsl,pins = <
-			MX8MP_IOMUXC_SAI2_RXC__GPIO4_IO22	0x4	/* SODIMM 76 */
-		>;
-	};
-
-	pinctrl_usdhc2: usdhc2grp {
-		fsl,pins = <
-			MX8MP_IOMUXC_SD2_CLK__USDHC2_CLK	0x190	/* SODIMM 78 */
-			MX8MP_IOMUXC_SD2_CMD__USDHC2_CMD	0x1d0	/* SODIMM 74 */
-			MX8MP_IOMUXC_SD2_DATA0__USDHC2_DATA0	0x1d0	/* SODIMM 80 */
-			MX8MP_IOMUXC_SD2_DATA1__USDHC2_DATA1	0x1d0	/* SODIMM 82 */
-			MX8MP_IOMUXC_SD2_DATA2__USDHC2_DATA2	0x1d0	/* SODIMM 70 */
-			MX8MP_IOMUXC_SD2_DATA3__USDHC2_DATA3	0x1d0	/* SODIMM 72 */
-			MX8MP_IOMUXC_GPIO1_IO04__USDHC2_VSELECT	0x4	/* PMIC_USDHC_VSELECT */
-		>;
-	};
-
-	pinctrl_usdhc2_100mhz: usdhc2grp-100mhz {
-		fsl,pins = <
-			MX8MP_IOMUXC_SD2_CLK__USDHC2_CLK	0x194
-			MX8MP_IOMUXC_SD2_CMD__USDHC2_CMD	0x1d4
-			MX8MP_IOMUXC_SD2_DATA0__USDHC2_DATA0	0x1d4
-			MX8MP_IOMUXC_SD2_DATA1__USDHC2_DATA1	0x1d4
-			MX8MP_IOMUXC_SD2_DATA2__USDHC2_DATA2	0x1d4
-			MX8MP_IOMUXC_SD2_DATA3__USDHC2_DATA3	0x1d4
-			MX8MP_IOMUXC_GPIO1_IO04__USDHC2_VSELECT 0x4
-		>;
-	};
-
-	pinctrl_usdhc2_200mhz: usdhc2grp-200mhz {
-		fsl,pins = <
-			MX8MP_IOMUXC_SD2_CLK__USDHC2_CLK	0x196
-			MX8MP_IOMUXC_SD2_CMD__USDHC2_CMD	0x1d6
-			MX8MP_IOMUXC_SD2_DATA0__USDHC2_DATA0	0x1d6
-			MX8MP_IOMUXC_SD2_DATA1__USDHC2_DATA1	0x1d6
-			MX8MP_IOMUXC_SD2_DATA2__USDHC2_DATA2	0x1d6
-			MX8MP_IOMUXC_SD2_DATA3__USDHC2_DATA3	0x1d6
-			MX8MP_IOMUXC_GPIO1_IO04__USDHC2_VSELECT 0x4
 		>;
 	};
 
