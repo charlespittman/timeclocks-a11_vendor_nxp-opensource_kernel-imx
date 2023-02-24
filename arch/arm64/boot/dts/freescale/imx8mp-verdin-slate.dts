@@ -193,6 +193,10 @@
 	};
 };
 
+&i2c3 {
+        clock-frequency = <100000>;
+};
+
 &i2c4 {
         clock-frequency = <100000>;
 
